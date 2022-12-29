@@ -253,6 +253,25 @@ module.exports = {
 	 */
 
 	actions: {
+		topNodes: {
+			params: {
+				name: { type: "string", optional: false },
+			},
+			async handler(ctx) {
+				const config = this.configs.set(ctx.params.name)
+				return k8s.topNodes(config.api.CoreV1Api)
+			}
+		},
+		topPods: {
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+			},
+			async handler(ctx) {
+				const config = this.configs.set(ctx.params.name)
+				return k8s.topPods(config.api.CoreV1Api, config.metrics,ctx.params.namespace)
+			}
+		},
 		loadConfig: {
 			params: {
 				name: { type: "string", optional: false },
@@ -268,7 +287,6 @@ module.exports = {
 
 				config.metrics = new k8s.Metrics(config.kc);
 				config.watch = new k8s.Watch(config.kc);
-
 				const apis = ['AppsV1Api', 'NetworkingV1Api', 'BatchV1Api', 'CoreV1Api']
 
 				for (let index = 0; index < apis.length; index++) {
@@ -581,7 +599,7 @@ function generateAPI(name) {
 					.then((res) => {
 						return res.body
 					}).catch((res) => {
-						console.log(res.body,properties)
+						console.log(res.body, properties)
 						throw new MoleculerClientError(
 							res.body.message,
 							res.body.code,
