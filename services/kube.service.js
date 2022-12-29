@@ -258,7 +258,7 @@ module.exports = {
 				name: { type: "string", optional: false },
 			},
 			async handler(ctx) {
-				const config = this.configs.set(ctx.params.name)
+				const config = this.configs.get(ctx.params.name)
 				return k8s.topNodes(config.api.CoreV1Api)
 			}
 		},
@@ -268,8 +268,8 @@ module.exports = {
 				namespace: { type: "string", optional: false },
 			},
 			async handler(ctx) {
-				const config = this.configs.set(ctx.params.name)
-				return k8s.topPods(config.api.CoreV1Api, config.metrics,ctx.params.namespace)
+				const config = this.configs.get(ctx.params.name)
+				return k8s.topPods(config.api.CoreV1Api, config.metrics, ctx.params.namespace)
 			}
 		},
 		loadConfig: {
