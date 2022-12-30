@@ -219,7 +219,7 @@ const api = [{
 	methods
 }
 ]
-const core = ['pods', 'endpoints', 'services', 'persistentvolumeclaims', 'events', 'nodes', 'resourcequotas', 'namespaces', 'limitrange']
+const core = ['pods', 'endpoints', 'services', 'persistentvolumeclaims', 'events', 'nodes', 'resourcequotas', 'namespaces', 'limitranges']
 const apps = ['replicasets', 'deployments', 'statefulsets', 'daemonsets']
 const batch = ['jobs', 'cronjobs']
 /**
