@@ -1,5 +1,6 @@
 "use strict";
 const k8s = require('@kubernetes/client-node');
+const request = require('request');
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 
 const { PrometheusDriver } = require('prometheus-query')
@@ -61,167 +62,10 @@ function $args(func) {
 		.split(',').filter(Boolean); // split & filter [""]
 }
 
-const methods = [
-	{
-		type: 'create',
-		namespace: true,
-		name: false,
-		body: true
-	},
-	{
-		type: 'list',
-		namespace: true,
-		name: false,
-		body: false
-	},
-	{
-		type: 'read',
-		namespace: true,
-		name: true,
-		body: false
-	},
-	{
-		type: 'patch',
-		namespace: true,
-		name: true,
-		body: true
-	},
-	{
-		type: 'delete',
-		namespace: true,
-		name: true,
-		body: false
-	}
-]
-
-const api = [{
-	type: 'DaemonSet',
-	api: 'AppsV1Api',
-	methods
-}, {
-	type: 'Deployment',
-	api: 'AppsV1Api',
-	methods
-}, {
-	type: 'ReplicaSet',
-	api: 'AppsV1Api',
-	methods
-}, {
-	type: 'StatefulSet',
-	api: 'AppsV1Api',
-	methods
-},
-/*****
- * 
- * 
- */
-{
-	type: 'Namespace',
-	namespace: false,
-	api: 'CoreV1Api',
-	methods
-},
-{
-	type: 'Pod',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-},
-{
-	type: 'ServiceAccount',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-},
-{
-	type: 'Service',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-},
-{
-	type: 'ConfigMap',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-},
-{
-	type: 'Endpoints',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-}, {
-	type: 'Event',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-}, {
-	type: 'PersistentVolumeClaim',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-}, {
-	type: 'ReplicationController',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-}, {
-	type: 'ResourceQuota',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-}, {
-	type: 'Secret',
-	namespace: true,
-	api: 'CoreV1Api',
-	methods
-},
-/**
- * 
- * 
- */
-{
-	type: 'Node',
-	namespace: false,
-	api: 'CoreV1Api',
-	methods
-},
-/**
- * 
- * 
- */
-{
-	type: 'CronJob',
-	namespace: true,
-	api: 'BatchV1Api',
-	methods
-},
-{
-	type: 'Job',
-	namespace: true,
-	api: 'BatchV1Api',
-	methods
-
-},
-/**
- * 
- * 
- */
-{
-	type: 'Ingress',
-	namespace: false,
-	api: 'NetworkingV1Api',
-	methods
-}, {
-	type: 'NetworkPolicy',
-	namespace: false,
-	api: 'NetworkingV1Api',
-	methods
-}
-]
 const core = ['pods', 'endpoints', 'services', 'persistentvolumeclaims', 'events', 'nodes', 'resourcequotas', 'namespaces', 'limitranges']
 const apps = ['replicasets', 'deployments', 'statefulsets', 'daemonsets']
 const batch = ['jobs', 'cronjobs']
+const tekton = ['pipelineruns', 'pipelines', 'taskruns']
 /**
  * attachments of addons service
  */
@@ -272,6 +116,94 @@ module.exports = {
 				return k8s.topPods(config.api.CoreV1Api, config.metrics, ctx.params.namespace)
 			}
 		},
+		createPiplineRun: {
+			params: {
+				//	body: { type: "string", optional: false },
+				config: { type: 'string', optional: false, default: 'default' }
+			},
+			async handler(ctx) {
+				const params = Object.assign({}, ctx.params);
+				const config = this.configs.get(ctx.params.config)
+				const options = {
+
+					method: "POST",
+					json: true,
+					url: `${config.kc.getCurrentCluster().server}/apis/tekton.dev/v1beta1/pipelineruns`,
+					body: {
+						"apiVersion": "tekton.dev/v1beta1",
+						"kind": "PipelineRun",
+						"metadata": {
+							"name": "testaa",
+							"annotations": {
+								"k8s.one-host.ca/build": "sadsad"
+							}
+						},
+						"spec": {
+							"serviceAccountName": "build-bot",
+							"pipelineRef": {
+								"name": "clone-build-push"
+							},
+							"podTemplate": {
+								"securityContext": {
+									"fsGroup": 65532
+								}
+							},
+							"workspaces": [
+								{
+									"name": "shared-data",
+									"volumeClaimTemplate": {
+										"spec": {
+											"accessModes": [
+												"ReadWriteOnce"
+											],
+											"resources": {
+												"requests": {
+													"storage": "1Gi"
+												}
+											}
+										}
+									}
+								},
+								{
+									"name": "docker-credentials",
+									"secret": {
+										"secretName": "docker-credentials"
+									}
+								}
+							],
+							"params": [
+								{
+									"name": "repo-url",
+									"value": "https://github.com/PaaS-Shack/kube.git"
+								},
+								{
+									"name": "repo-sha",
+									"value": "bff3767420236b6570361452fe98969e965aaaf5"
+								},
+								{
+									"name": "image-reference",
+									"value": "flybytim/my_app:version"
+								}
+							]
+						}
+					}
+				}
+				config.kc.applyToRequest(options);
+console.log(options)
+				return new Promise((resolve, reject) => {
+					request.get(options, (error, response, body) => {
+						if (error) {
+							console.log(`error: ${error}`);
+						}
+						if (response) {
+							console.log(`statusCode: ${response.statusCode}`);
+						}
+						resolve(body)
+					});
+				})
+
+			}
+		},
 		loadConfig: {
 			params: {
 				name: { type: "string", optional: false },
@@ -287,15 +219,16 @@ module.exports = {
 
 				config.metrics = new k8s.Metrics(config.kc);
 				config.watch = new k8s.Watch(config.kc);
-				const apis = ['AppsV1Api', 'NetworkingV1Api', 'BatchV1Api', 'CoreV1Api']
+				const apis = ['AppsV1Api', 'NetworkingV1Api', 'BatchV1Api', 'CoreV1Api', 'CustomObjectsApi']
 
 				for (let index = 0; index < apis.length; index++) {
 					const key = apis[index];
 					config.api[key] = config.kc.makeApiClient(k8s[key]);
+					this.logger.info(`Loading api ${key} for cluster ${name}`)
 				}
 				this.configs.set(name, config)
 
-				const list = [...core, ...apps, ...batch]
+				const list = [...core, ...apps, ...batch, ...tekton]
 
 				for (let index = 0; index < list.length; index++) {
 					this.watchAPI(config, list[index], ['ADDED', 'MODIFIED', 'DELETED'])
@@ -429,6 +362,8 @@ module.exports = {
 				path = `/apis/apps/v1/${api}`;
 			} else if (batch.includes(api)) {
 				path = `/apis/batch/v1/${api}`;
+			} else if (tekton.includes(api)) {
+				path = `/apis/tekton.dev/v1beta1/${api}`;
 			}
 			this.logger.info(`loading kube api ${path}`)
 
@@ -467,7 +402,7 @@ module.exports = {
 				delete this.kubeEvents[`${cluster}-${api}`];
 				setTimeout(() => {
 					this.watchAPI(config, api, events)
-				}, 100)
+				}, err ? 5000 : 100)
 			})
 		},
 	},
@@ -499,7 +434,6 @@ module.exports = {
 
 function generateAPI(name) {
 	const api = k8s[name]
-	console.log(name)
 	const list = getClassMethods(api)
 
 	for (let index = 0; index < list.length; index++) {
@@ -555,7 +489,10 @@ function generateAPI(name) {
 			namespace: { type: "string", default: 'default', optional: true },
 			pretty: { type: "boolean", default: true, optional: true },
 			//dryRun: { type: "string", default: 'All', optional: true },
-			body: { type: "object", optional: false }
+			body: { type: "object", optional: false },
+			group:{ type: "string", optional: false },
+			version:{ type: "string", optional: false },
+			plural:{ type: "string", optional: false },
 		}
 
 
@@ -623,3 +560,4 @@ generateAPI('DiscoveryV1beta1Api');
 generateAPI('EventsV1beta1Api');
 generateAPI('PolicyV1beta1Api');
 generateAPI('StorageV1beta1Api');
+generateAPI('CustomObjectsApi');

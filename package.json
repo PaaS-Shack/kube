@@ -26,11 +26,12 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "^0.17.0",
+    "config-mixin": "git+https://github.com/FLYBYME/config-mixin.git",
+    "cron-mixin": "git+https://github.com/PaaS-Shack/cron-mixin.git",
     "moleculer": "^0.14.26",
     "nats": "^2.7.1",
     "prometheus-query": "^3.3.0",
-    "config-mixin": "git+https://github.com/FLYBYME/config-mixin.git",
-    "cron-mixin": "git+https://github.com/PaaS-Shack/cron-mixin.git"
+    "request": "^2.88.2"
   },
   "engines": {
     "node": ">= 16.x.x"
