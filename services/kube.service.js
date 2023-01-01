@@ -116,91 +116,26 @@ module.exports = {
 				return k8s.topPods(config.api.CoreV1Api, config.metrics, ctx.params.namespace)
 			}
 		},
-		createPiplineRun: {
+		logs: {
 			params: {
-				//	body: { type: "string", optional: false },
-				config: { type: 'string', optional: false, default: 'default' }
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				namespace: { type: "string", default: 'default', optional: true },
 			},
 			async handler(ctx) {
-				const params = Object.assign({}, ctx.params);
-				const config = this.configs.get(ctx.params.config)
-				const options = {
+				const { name, namespace, cluster } = Object.assign({}, ctx.params);
+				const config = this.configs.get(cluster)
 
-					method: "POST",
-					json: true,
-					url: `${config.kc.getCurrentCluster().server}/apis/tekton.dev/v1beta1/pipelineruns`,
-					body: {
-						"apiVersion": "tekton.dev/v1beta1",
-						"kind": "PipelineRun",
-						"metadata": {
-							"name": "testaa",
-							"annotations": {
-								"k8s.one-host.ca/build": "sadsad"
-							}
-						},
-						"spec": {
-							"serviceAccountName": "build-bot",
-							"pipelineRef": {
-								"name": "clone-build-push"
-							},
-							"podTemplate": {
-								"securityContext": {
-									"fsGroup": 65532
-								}
-							},
-							"workspaces": [
-								{
-									"name": "shared-data",
-									"volumeClaimTemplate": {
-										"spec": {
-											"accessModes": [
-												"ReadWriteOnce"
-											],
-											"resources": {
-												"requests": {
-													"storage": "1Gi"
-												}
-											}
-										}
-									}
-								},
-								{
-									"name": "docker-credentials",
-									"secret": {
-										"secretName": "docker-credentials"
-									}
-								}
-							],
-							"params": [
-								{
-									"name": "repo-url",
-									"value": "https://github.com/PaaS-Shack/kube.git"
-								},
-								{
-									"name": "repo-sha",
-									"value": "bff3767420236b6570361452fe98969e965aaaf5"
-								},
-								{
-									"name": "image-reference",
-									"value": "flybytim/my_app:version"
-								}
-							]
-						}
-					}
-				}
-				config.kc.applyToRequest(options);
-console.log(options)
-				return new Promise((resolve, reject) => {
-					request.get(options, (error, response, body) => {
-						if (error) {
-							console.log(`error: ${error}`);
-						}
-						if (response) {
-							console.log(`statusCode: ${response.statusCode}`);
-						}
-						resolve(body)
-					});
-				})
+				const logStream = new stream.PassThrough();
+
+				const chunk = []
+
+				logStream.on('data', (c) => {
+					chunk.push(c);
+				});
+
+				config.logger.log(namespace, name, undefined, logStream, { follow: false, tailLines: 50, pretty: false, timestamps: false })
+				return new Promise((resolve) => logStream.on('end', () => resolve(chunk)))
 
 			}
 		},
@@ -219,6 +154,7 @@ console.log(options)
 
 				config.metrics = new k8s.Metrics(config.kc);
 				config.watch = new k8s.Watch(config.kc);
+				config.logger = new k8s.Log(config.kc);
 				const apis = ['AppsV1Api', 'NetworkingV1Api', 'BatchV1Api', 'CoreV1Api', 'CustomObjectsApi']
 
 				for (let index = 0; index < apis.length; index++) {
@@ -490,9 +426,9 @@ function generateAPI(name) {
 			pretty: { type: "boolean", default: true, optional: true },
 			//dryRun: { type: "string", default: 'All', optional: true },
 			body: { type: "object", optional: false },
-			group:{ type: "string", optional: false },
-			version:{ type: "string", optional: false },
-			plural:{ type: "string", optional: false },
+			group: { type: "string", optional: false },
+			version: { type: "string", optional: false },
+			plural: { type: "string", optional: false },
 		}
 
 
