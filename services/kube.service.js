@@ -60,7 +60,11 @@ function $args(func) {
 		.split(',').filter(Boolean); // split & filter [""]
 }
 
-const core = ['pods', 'endpoints', 'services', 'persistentvolumeclaims', 'events', 'nodes', 'resourcequotas', 'namespaces', 'limitranges']
+const apis = ['CoreV1Api', 'NetworkingV1Api', 'AppsV1Api', 'NodeV1beta1Api', 'BatchV1Api',
+	'AuthenticationV1Api', 'CertificatesV1Api', 'DiscoveryV1beta1Api', 'EventsV1beta1Api',
+	'PolicyV1beta1Api', 'StorageV1beta1Api', 'CustomObjectsApi']
+const core = ['pods', 'endpoints', 'services', 'persistentvolumeclaims', 'events', 'nodes',
+	'resourcequotas', 'namespaces', 'limitranges']
 const apps = ['replicasets', 'deployments', 'statefulsets', 'daemonsets']
 const batch = ['jobs', 'cronjobs']
 const tekton = ['pipelineruns', 'pipelines', 'taskruns']
@@ -71,17 +75,12 @@ module.exports = {
 	name: "kube",
 	version: 1,
 
-	mixins: [
-
-
-	],
+	mixins: [],
 
 	/**
 	 * Service dependencies
 	 */
-	dependencies: [
-
-	],
+	dependencies: [],
 
 	/**
 	 * Service settings
@@ -97,7 +96,7 @@ module.exports = {
 	actions: {
 		topNodes: {
 			params: {
-				name: { type: "string", optional: false },
+				cluster: { type: "string", optional: false },
 			},
 			async handler(ctx) {
 				const config = this.configs.get(ctx.params.name)
@@ -106,7 +105,7 @@ module.exports = {
 		},
 		topPods: {
 			params: {
-				name: { type: "string", optional: false },
+				cluster: { type: "string", optional: false },
 				namespace: { type: "string", optional: false },
 			},
 			async handler(ctx) {
@@ -132,7 +131,7 @@ module.exports = {
 					chunk.push(c.toString());
 				});
 
-				config.logger.log(namespace, name, undefined, logStream, { follow: false, tailLines: 50, pretty: false, timestamps: false })
+				await config.logger.log(namespace, name, undefined, logStream, { follow: false, tailLines: 50, pretty: false, timestamps: false })
 				return new Promise((resolve) => logStream.on('end', () => resolve(chunk)))
 
 			}
@@ -153,7 +152,6 @@ module.exports = {
 				config.metrics = new k8s.Metrics(config.kc);
 				config.watch = new k8s.Watch(config.kc);
 				config.logger = new k8s.Log(config.kc);
-				const apis = ['AppsV1Api', 'NetworkingV1Api', 'BatchV1Api', 'CoreV1Api', 'CustomObjectsApi']
 
 				for (let index = 0; index < apis.length; index++) {
 					const key = apis[index];
@@ -378,7 +376,7 @@ function generateAPI(name) {
 		const type = keySplit[0]
 		let rest = '';
 		const params = {
-			config: { type: "string", default: 'default', optional: true },
+			cluster: { type: "string", default: 'default', optional: true },
 		}
 
 		if (type == 'connect' || !!module.exports.actions[`${key}`]) {
