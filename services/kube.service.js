@@ -129,7 +129,7 @@ module.exports = {
 				const chunk = []
 
 				logStream.on('data', (c) => {
-					chunk.push(c);
+					chunk.push(c.toString());
 				});
 
 				config.logger.log(namespace, name, undefined, logStream, { follow: false, tailLines: 50, pretty: false, timestamps: false })
