@@ -118,7 +118,7 @@ module.exports = {
 			params: {
 				name: { type: "string", optional: false },
 				namespace: { type: "string", optional: false },
-				namespace: { type: "string", default: 'default', optional: true },
+				cluster: { type: "string", default: 'default', optional: true },
 			},
 			async handler(ctx) {
 				const { name, namespace, cluster } = Object.assign({}, ctx.params);
