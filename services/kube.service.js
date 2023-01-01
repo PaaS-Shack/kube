@@ -1,9 +1,7 @@
 "use strict";
 const k8s = require('@kubernetes/client-node');
-const request = require('request');
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
-
-const { PrometheusDriver } = require('prometheus-query')
+const stream = require('stream');
 
 function getClassMethods(className) {
 	if (!(className instanceof Object)) {
