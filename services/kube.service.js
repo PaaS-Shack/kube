@@ -99,7 +99,7 @@ module.exports = {
 				cluster: { type: "string", optional: false },
 			},
 			async handler(ctx) {
-				const config = this.configs.get(ctx.params.name)
+				const config = this.configs.get(ctx.params.cluster)
 				return k8s.topNodes(config.api.CoreV1Api)
 			}
 		},
@@ -109,7 +109,7 @@ module.exports = {
 				namespace: { type: "string", optional: false },
 			},
 			async handler(ctx) {
-				const config = this.configs.get(ctx.params.name)
+				const config = this.configs.get(ctx.params.cluster)
 				return k8s.topPods(config.api.CoreV1Api, config.metrics, ctx.params.namespace)
 			}
 		},
@@ -459,7 +459,7 @@ function generateAPI(name) {
 					}
 				}
 
-				const config = this.configs.get(params.config);
+				const config = this.configs.get(params.cluster);
 				if (!config) {
 					throw (`Config '${params.config}' not found`)
 				}
@@ -480,16 +480,7 @@ function generateAPI(name) {
 	}
 }
 
-
-generateAPI('CoreV1Api');
-generateAPI('NetworkingV1Api');
-generateAPI('AppsV1Api');
-generateAPI('NodeV1beta1Api');
-generateAPI('BatchV1Api');
-generateAPI('AuthenticationV1Api');
-generateAPI('CertificatesV1Api');
-generateAPI('DiscoveryV1beta1Api');
-generateAPI('EventsV1beta1Api');
-generateAPI('PolicyV1beta1Api');
-generateAPI('StorageV1beta1Api');
-generateAPI('CustomObjectsApi');
+for (let index = 0; index < apis.length; index++) {
+	const api = apis[index];
+	generateAPI(api);
+}
