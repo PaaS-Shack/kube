@@ -30,6 +30,7 @@
     "cron-mixin": "git+https://github.com/PaaS-Shack/cron-mixin.git",
     "moleculer": "^0.14.26",
     "nats": "^2.7.1",
+    "nestdb": "^2.0.0",
     "prometheus-query": "^3.3.0",
     "request": "^2.88.2"
   },

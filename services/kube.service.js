@@ -3,6 +3,9 @@ const k8s = require('@kubernetes/client-node');
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 const stream = require('stream');
 
+const Datastore = require('nestdb');
+const { Console } = require('console');
+
 function getClassMethods(className) {
 	if (!(className instanceof Object)) {
 		throw new Error("Not a class");
@@ -68,6 +71,28 @@ const core = ['pods', 'endpoints', 'services', 'persistentvolumeclaims', 'events
 const apps = ['replicasets', 'deployments', 'statefulsets', 'daemonsets']
 const batch = ['jobs', 'cronjobs']
 const tekton = ['pipelineruns', 'pipelines', 'taskruns']
+
+function flattenObject(ob) {
+	var toReturn = {};
+
+	for (var i in ob) {
+		if (!ob.hasOwnProperty(i)) continue;
+
+		if ((typeof ob[i]) == 'object' && ob[i] !== null) {
+			var flatObject = flattenObject(ob[i]);
+			for (var x in flatObject) {
+				if (!flatObject.hasOwnProperty(x)) continue;
+
+				toReturn[i + '.' + x] = flatObject[x];
+			}
+		} else {
+			toReturn[i] = ob[i];
+		}
+	}
+	return toReturn;
+}
+
+
 /**
  * attachments of addons service
  */
@@ -96,21 +121,24 @@ module.exports = {
 	actions: {
 		topNodes: {
 			params: {
-				cluster: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
 			},
 			async handler(ctx) {
 				const config = this.configs.get(ctx.params.cluster)
-				return k8s.topNodes(config.api.CoreV1Api)
+				return config.metrics.getNodeMetrics()
 			}
 		},
 		topPods: {
 			params: {
-				cluster: { type: "string", optional: false },
-				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+				namespace: { type: "string", optional: true },
+				name: { type: "string", optional: true },
+
 			},
 			async handler(ctx) {
 				const config = this.configs.get(ctx.params.cluster)
-				return k8s.topPods(config.api.CoreV1Api, config.metrics, ctx.params.namespace)
+				return config.metrics.getPodMetrics(ctx.params.namespace, ctx.params.name).then((res) => res.items[0])
+
 			}
 		},
 		logs: {
@@ -177,24 +205,122 @@ module.exports = {
 			},
 			async handler(ctx) {
 				const params = Object.assign({}, ctx.params);
+				let cpu = 0
+				let memory = 0
+				return new Promise((resolve, reject) => {
 
-				const res = await ctx.call('v1.kube.get', {
-					uid: params.uid
+					this.db.findOne({
+						_id: params.uid
+					}).exec((err, doc) => {
+						if (err) {
+							reject(err)
+						} else {
+							this.db.findOne({
+								_id: doc.metadata.name
+							}).exec((err, doc) => {
+								if (err) {
+									reject(err)
+								} else {
+									if (!doc)
+										return resolve({
+											cpu, memory
+										})
+									for (let index = 0; index < doc.containers.length; index++) {
+										const { usage } = doc.containers[index];
+										cpu += parseInt(usage.cpu.match(/-?\d+\.?\d*/))
+										memory += parseInt(usage.memory.match(/-?\d+\.?\d*/))
+										console.log(usage.memory)
+									}
+									resolve({
+										cpu: cpu / 1000000000, memory
+									})
+								}
+							});
+						}
+					});
 				})
+			}
+		},
+		findOne: {
+			params: {
 
-				if (!res) {
-					throw Error('not found')
+			},
+			async handler(ctx) {
+				const params = Object.assign({}, ctx.params);
+				const fields = {}
+				const sort = {}
+
+				if (Array.isArray(params.fields)) {
+					for (let index = 0; index < params.fields.length; index++) {
+						const element = params.fields[index];
+						fields[element] = 1
+					}
+					delete params.fields
+				} else if (params.fields) {
+					fields[params.fields] = 1
+					delete params.fields
+				}
+				if (Array.isArray(params.sort)) {
+					for (let index = 0; index < params.sort.length; index++) {
+						const element = params.sort[index];
+						sort[element] = 1
+					}
+					delete params.sort
+				} else if (params.sort) {
+					sort[params.sort] = 1
+					delete params.sort
 				}
 
-				const query = `sum(node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{namespace="${res.metadata.namespace}", pod="${res.metadata.name}"})`
-				const start = new Date().getTime() - 24 * 60 * 60 * 1000;
-				const end = new Date();
-
-				return this.prom.series(query, start, end)
-					.then((res) => {
-						this.logger.info(res)
-						return res
+				return new Promise((resolve, reject) => {
+					console.log(flattenObject(params), fields, sort)
+					this.db.findOne({ ...flattenObject(params) }, fields).sort(sort).exec(function (err, docs) {
+						if (err) {
+							reject(err)
+						} else {
+							resolve(docs)
+						}
 					});
+				})
+			}
+		},
+		find: {
+			params: {
+
+			},
+			async handler(ctx) {
+				const params = Object.assign({}, ctx.params);
+				const fields = {}
+				const sort = {}
+
+				if (Array.isArray(params.fields)) {
+					for (let index = 0; index < params.fields.length; index++) {
+						const element = params.fields[index];
+						fields[element] = 1
+					}
+					delete params.fields
+				} else if (params.fields) {
+					fields[params.fields] = 1
+					delete params.fields
+				}
+				if (Array.isArray(params.sort)) {
+					for (let index = 0; index < params.sort.length; index++) {
+						const element = params.sort[index];
+						sort[element] = 1
+					}
+					delete params.sort
+				} else if (params.sort) {
+					sort[params.sort] = 1
+					delete params.sort
+				}
+				return new Promise((resolve, reject) => {
+					this.db.find({ ...flattenObject(params) }, fields).sort(sort).exec(function (err, docs) {
+						if (err) {
+							reject(err)
+						} else {
+							resolve(docs)
+						}
+					});
+				})
 			}
 		},
 		get: {
@@ -297,6 +423,7 @@ module.exports = {
 			} else if (tekton.includes(api)) {
 				path = `/apis/tekton.dev/v1beta1/${api}`;
 			}
+
 			this.logger.info(`loading kube api ${path}`)
 
 
@@ -304,37 +431,70 @@ module.exports = {
 
 				const event = {
 					...resource,
+					_id: resource.metadata.uid,
 					cluster: config.name,
 					phase: phase.toLocaleLowerCase()
 				}
 
 				delete event.metadata.managedFields
-
-				let emit = true;
-				switch (phase) {
-					case 'ADDED':
-						if (this.cache.has(resource.metadata.uid)) {
-							emit = false;
+				if (event.phase == 'deleted') {
+					this.db.remove({ _id: event._id }, {}, (err, numRemoved) => {
+						if (err) {
+							console.log(event, err)
 						}
-					case 'MODIFIED':
-						this.cache.set(resource.metadata.uid, event)
-						break;
-					case 'DELETED':
-						this.cache.delete(resource.metadata.uid)
-						break;
-					default:
-						break;
+					});
+				} else {
+					this.db.update({ _id: event._id }, event, {
+						upsert: true
+					}, (err, numAffected, affectedDocuments, upsert) => {
+						if (err) {
+							console.log(event, err)
+						}
+					});
 				}
 
-
-				if (emit && events.includes(phase)) {
-					this.broker.emit(`kube.${api}.${phase.toLocaleLowerCase()}`, event)
-				}
 			}, (err) => {
+				if (err) {
+					console.log(err)
+				}
 				delete this.kubeEvents[`${cluster}-${api}`];
 				setTimeout(() => {
 					this.watchAPI(config, api, events)
 				}, err ? 5000 : 100)
+			})
+		},
+		getUsage(doc) {
+			const result = {
+				cpu: 0,
+				memory: 0,
+				containers: 0,
+			}
+			if (doc) {
+				for (let index = 0; index < doc.containers.length; index++) {
+					const { usage, name } = doc.containers[index];
+					result.cpu += parseInt(usage.cpu.match(/-?\d+\.?\d*/)) / 1000000
+					result.memory += parseInt(usage.memory.match(/-?\d+\.?\d*/)) / 1024
+					result.containers++;
+				}
+			}
+			return result
+		},
+		async update(query, update) {
+			return new Promise((resolve, reject) => {
+				this.db.update(query, update, {
+					upsert: true
+				}, (err, numAffected, affectedDocuments, upsert) => {
+					if (err) {
+						reject(err)
+					} else {
+						this.db.findOne(query, (err, doc) => err ? reject(err) : resolve(doc))
+					}
+				})
+			})
+		},
+		async findOne(query, update) {
+			return new Promise((resolve, reject) => {
+				this.db.findOne(query, (err, doc) => err ? reject(err) : resolve(doc))
 			})
 		},
 	},
@@ -344,6 +504,23 @@ module.exports = {
 	created() {
 		this.cache = new Map()
 		this.configs = new Map()
+		this.db = new Datastore();
+
+		this.db.on('inserted', (newDoc) => {
+			//console.log('inserted', newDoc.kind.toLocaleLowerCase())
+			//this.logger.info(`ADDED ${newDoc.kind}`)
+			this.broker.emit(`kube.${newDoc.kind.toLocaleLowerCase()}s.added`, newDoc)
+		})
+		this.db.on('updated', (newDoc) => {
+			//console.log('updated', (newDoc))
+			//this.logger.info(`MODIFIED ${newDoc.kind}`)
+			this.broker.emit(`kube.${newDoc.kind.toLocaleLowerCase()}s.modified`, newDoc)
+		})
+		this.db.on('removed', (newDoc) => {
+			//console.log('removed', (newDoc))
+			this.logger.info(`DELETED ${newDoc.kind}`)
+			this.broker.emit(`kube.${newDoc.kind.toLocaleLowerCase()}s.deleted`, newDoc)
+		})
 	},
 
 	/**
@@ -468,7 +645,7 @@ function generateAPI(name) {
 					.then((res) => {
 						return res.body
 					}).catch((res) => {
-						console.log(res.body, properties)
+						//console.log(res.body, properties)
 						throw new MoleculerClientError(
 							res.body.message,
 							res.body.code,

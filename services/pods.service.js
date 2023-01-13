@@ -351,7 +351,7 @@ module.exports = {
 	 * Service started lifecycle event handler
 	 */
 	started() {
-		return this.broker.call('v1.kube.get', {
+		return this.broker.call('v1.kube.find', {
 			kind: 'Pod'
 		}).then((res) => {
 			for (let index = 0; index < res.length; index++) {
