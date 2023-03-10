@@ -3,7 +3,7 @@ const k8s = require('@kubernetes/client-node');
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 const stream = require('stream');
 
-const Datastore = require('nestdb');
+const Datastore = require('../lib/nedb/index');
 const { Console } = require('console');
 
 function getClassMethods(className) {
