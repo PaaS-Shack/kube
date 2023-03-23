@@ -188,7 +188,7 @@ module.exports = {
 				}
 				this.configs.set(name, config)
 
-				const list = [...core, ...apps, ...batch, ...tekton]
+				const list = [...core, ...apps, ...batch]
 
 				for (let index = 0; index < list.length; index++) {
 					this.watchAPI(config, list[index], ['ADDED', 'MODIFIED', 'DELETED'])
