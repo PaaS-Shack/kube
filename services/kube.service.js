@@ -436,23 +436,34 @@ module.exports = {
 					phase: phase.toLocaleLowerCase()
 				}
 
+				const kind = event.kind.toLocaleLowerCase()
+
 				delete event.metadata.managedFields
 				if (event.phase == 'deleted') {
 					this.db.remove({ _id: event._id }, {}, (err, numRemoved) => {
 						if (err) {
 							console.log(event, err)
 						}
+						this.broker.emit(`kube.${kind}s.deleted`, newDoc)
 					});
 				} else {
-					this.db.update({ _id: event._id }, event, {
-						upsert: true
-					}, (err, numAffected, affectedDocuments, upsert) => {
+					this.db.findOne({ _id: event._id }, (err, docs) => {
 						if (err) {
 							console.log(event, err)
+						} else {
+							let isNew = !docs
+							this.db.update({ _id: event._id }, event, {
+								upsert: true
+							}, (err, numAffected, affectedDocuments, upsert) => {
+								if (err) {
+									console.log(event, err)
+								} else {
+									this.broker.emit(`kube.${kind}s.${isNew ? 'added' : 'modified'}`, newDoc)
+								}
+							});
 						}
 					});
 				}
-
 			}, (err) => {
 				if (err) {
 					console.log(err)
@@ -492,7 +503,7 @@ module.exports = {
 				})
 			})
 		},
-		async findOne(query, update) {
+		async findOne(query) {
 			return new Promise((resolve, reject) => {
 				this.db.findOne(query, (err, doc) => err ? reject(err) : resolve(doc))
 			})
@@ -505,22 +516,6 @@ module.exports = {
 		this.cache = new Map()
 		this.configs = new Map()
 		this.db = new Datastore();
-
-		this.db.on('inserted', (newDoc) => {
-			//console.log('inserted', newDoc.kind.toLocaleLowerCase())
-			//this.logger.info(`ADDED ${newDoc.kind}`)
-			this.broker.emit(`kube.${newDoc.kind.toLocaleLowerCase()}s.added`, newDoc)
-		})
-		this.db.on('updated', (newDoc) => {
-			//console.log('updated', (newDoc))
-			//this.logger.info(`MODIFIED ${newDoc.kind}`)
-			this.broker.emit(`kube.${newDoc.kind.toLocaleLowerCase()}s.modified`, newDoc)
-		})
-		this.db.on('removed', (newDoc) => {
-			//console.log('removed', (newDoc))
-			this.logger.info(`DELETED ${newDoc.kind}`)
-			this.broker.emit(`kube.${newDoc.kind.toLocaleLowerCase()}s.deleted`, newDoc)
-		})
 	},
 
 	/**
