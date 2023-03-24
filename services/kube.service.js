@@ -444,7 +444,7 @@ module.exports = {
 						if (err) {
 							console.log(event, err)
 						}
-						this.broker.emit(`kube.${kind}s.deleted`, newDoc)
+						this.broker.emit(`kube.${kind}s.deleted`, event)
 					});
 				} else {
 					this.db.findOne({ _id: event._id }, (err, docs) => {
@@ -458,7 +458,7 @@ module.exports = {
 								if (err) {
 									console.log(event, err)
 								} else {
-									this.broker.emit(`kube.${kind}s.${isNew ? 'added' : 'modified'}`, newDoc)
+									this.broker.emit(`kube.${kind}s.${isNew ? 'added' : 'modified'}`, event)
 								}
 							});
 						}
