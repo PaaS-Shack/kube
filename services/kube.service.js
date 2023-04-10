@@ -119,6 +119,51 @@ module.exports = {
 	 */
 
 	actions: {
+		applyTLS: {
+			params: {
+				cluster: { type: "string", default: 'default', optional: true },
+				namespace: { type: "string", optional: false },
+				name: { type: "string", optional: false },
+				domain: { type: "string", optional: false },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster, domain } = Object.assign({}, ctx.params);
+				const config = this.configs.get(cluster)
+
+
+				const certificate = await ctx.call('v1.certificates.resolveDomain', {
+					domain
+				})
+
+
+				const secret = {
+					"apiVersion": "v1",
+					"data": {
+						"tls.crt": Buffer(certificate.cert).toString('base64'),
+						"tls.key": Buffer(certificate.privkey).toString('base64')
+					},
+					"kind": "Secret",
+					"metadata": {
+						"name": name,
+						"namespace": namespace
+					},
+					"type": "kubernetes.io/tls"
+				}
+
+				return this.actions.readNamespacedSecret({
+					name, namespace, cluster
+				})
+					.then(() => {
+						return this.actions.patchNamespacedSecret({
+							name, namespace, cluster, body: secret
+						})
+					}).catch(() => {
+						return this.actions.createNamespacedSecret({
+							name, namespace, cluster, body: secret
+						})
+					})
+			}
+		},
 		topNodes: {
 			params: {
 				cluster: { type: "string", default: 'default', optional: true },
