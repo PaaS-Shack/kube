@@ -152,15 +152,15 @@ module.exports = {
 
 				return this.actions.readNamespacedSecret({
 					name, namespace, cluster
-				})
+				}, { parentCtx: ctx })
 					.then(() => {
-						return this.actions.patchNamespacedSecret({
+						return this.actions.replaceNamespacedSecret({
 							name, namespace, cluster, body: secret
-						})
+						}, { parentCtx: ctx })
 					}).catch(() => {
 						return this.actions.createNamespacedSecret({
 							name, namespace, cluster, body: secret
-						})
+						}, { parentCtx: ctx })
 					})
 			}
 		},
