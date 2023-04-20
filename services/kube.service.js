@@ -2,7 +2,7 @@
 const k8s = require('@kubernetes/client-node');
 const { MoleculerRetryableError, MoleculerClientError } = require("moleculer").Errors;
 const stream = require('stream');
-
+const request = require('request');
 const Datastore = require('../lib/nedb/index');
 const { Console } = require('console');
 
@@ -226,6 +226,7 @@ module.exports = {
 				config.watch = new k8s.Watch(config.kc);
 				config.logger = new k8s.Log(config.kc);
 
+
 				for (let index = 0; index < apis.length; index++) {
 					const key = apis[index];
 					config.api[key] = config.kc.makeApiClient(k8s[key]);
@@ -233,7 +234,7 @@ module.exports = {
 				}
 				this.configs.set(name, config)
 
-				const list = [...core, ...apps, ...batch]
+				const list = [...core, ...apps, ...batch, ...tekton]
 
 				for (let index = 0; index < list.length; index++) {
 					this.watchAPI(config, list[index], ['ADDED', 'MODIFIED', 'DELETED'])
