@@ -111,7 +111,7 @@ module.exports = {
 	 * Service settings
 	 */
 	settings: {
-		rest: '/v1/kube/',
+		rest: false,
 	},
 
 	/**
