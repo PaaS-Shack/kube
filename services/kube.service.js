@@ -191,7 +191,7 @@ module.exports = {
 				const config = this.configs.get(ctx.meta.cluster)
 				const writeStream = new stream.PassThrough();
 				const exec = new k8s.Exec(config.kc);
-				exec.exec(ctx.meta.namespace, ctx.meta.pod, ctx.meta.container, command,
+				exec.exec(ctx.meta.namespace, ctx.meta.pod, ctx.meta.container, ctx.meta.command,
 					writeStream, writeStream, ctx.params,
 					true /* tty */, (status) => {
 						// tslint:disable-next-line:no-console
