@@ -186,6 +186,23 @@ module.exports = {
 
 			}
 		},
+		exec: {
+			async handler(ctx) {
+				const config = this.configs.get(ctx.meta.cluster)
+				const writeStream = new stream.PassThrough();
+				const exec = new k8s.Exec(config.kc);
+				exec.exec(ctx.meta.namespace, ctx.meta.pod, ctx.meta.container, command,
+					writeStream, writeStream, ctx.params,
+					true /* tty */, (status) => {
+						// tslint:disable-next-line:no-console
+						console.log('Exited with status:');
+						// tslint:disable-next-line:no-console
+						console.log(JSON.stringify(status, null, 2));
+					});
+
+				return writeStream;
+			}
+		},
 		logs: {
 			params: {
 				name: { type: "string", optional: false },
