@@ -235,20 +235,17 @@ module.exports = {
 			async handler(ctx) {
 				const { name, namespace, cluster } = Object.assign({}, ctx.params);
 
-				return this.actions.patchNamespacedDeployment({
-					name, namespace, cluster, body: {
-						"apiVersion": "apps/v1",
-						"kind": "Deployment",
-						"spec": {
-							"template": {
-								"metadata": {
-									"annotations": {
-										"kubectl.kubernetes.io/restartedAt": Date().toString()
-									}
-								}
-							}
-						}
+				const deployment = await this.actions.findOne({
+					metadata: {
+						name,
+						namespace
 					}
+				})
+
+				deployment.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = Date()
+
+				return this.actions.replaceNamespacedDeployment({
+					name, namespace, cluster, body: deployment
 				}, { parentCtx: ctx })
 			}
 		},
