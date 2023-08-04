@@ -731,6 +731,9 @@ function generateAPI(name) {
 						return res.body
 					}).catch((res) => {
 						//console.log(res.body, properties)
+						if (!res.body) {
+							throw res
+						}
 						throw new MoleculerClientError(
 							res.body.message,
 							res.body.code,
