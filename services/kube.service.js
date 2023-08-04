@@ -237,13 +237,9 @@ module.exports = {
 
 				return this.actions.patchNamespacedDeployment({
 					name, namespace, cluster, body: {
-						"spec": {
-							"template": {
-								"metadata": {
-									"annotations": {
-										"kubectl.kubernetes.io/restartedAt": Date.now()
-									}
-								}
+						"metadata": {
+							"annotations": {
+								"kubectl.kubernetes.io/restartedAt": Date.now()
 							}
 						}
 					}
