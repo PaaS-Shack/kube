@@ -245,7 +245,6 @@ module.exports = {
 				await this.actions.replaceNamespacedDeployment({
 					name, namespace, cluster, body: deployment
 				}, { parentCtx: ctx })
-
 				await this.sleep()
 				
 				deployment = await this.actions.readNamespacedDeployment({
@@ -257,6 +256,28 @@ module.exports = {
 				return this.actions.replaceNamespacedDeployment({
 					name, namespace, cluster, body: deployment
 				}, { parentCtx: ctx })
+			}
+		},
+		stopDeployment: {
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster } = Object.assign({}, ctx.params);
+
+				let deployment = await this.actions.readNamespacedDeployment({
+					name, namespace, cluster
+				}, { parentCtx: ctx })
+				const replicas = deployment.spec.replicas;
+
+				deployment.spec.replicas = 0;
+
+				return this.actions.replaceNamespacedDeployment({
+					name, namespace, cluster, body: deployment
+				}, { parentCtx: ctx })
+
 			}
 		},
 		loadConfig: {
