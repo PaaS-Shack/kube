@@ -237,25 +237,19 @@ module.exports = {
 
 				let deployment = await this.actions.readNamespacedDeployment({
 					name, namespace, cluster
-				}, { parentCtx: ctx })
+				}, { parentCtx: ctx });
+				
 				const replicas = deployment.spec.replicas;
 
-				deployment.spec.replicas = 0;
+				await this.actions.scaleDeployment({
+					name, namespace, cluster, replicas: 0
+				}, { parentCtx: ctx });
 
-				await this.actions.replaceNamespacedDeployment({
-					name, namespace, cluster, body: deployment
-				}, { parentCtx: ctx })
-				await this.sleep()
-				
-				deployment = await this.actions.readNamespacedDeployment({
-					name, namespace, cluster
-				}, { parentCtx: ctx })
-				
-				deployment.spec.replicas = replicas > 0 ? replicas : 1;
+				await this.sleep();
 
-				return this.actions.replaceNamespacedDeployment({
-					name, namespace, cluster, body: deployment
-				}, { parentCtx: ctx })
+				return this.actions.scaleDeployment({
+					name, namespace, cluster, replicas: replicas > 0 ? replicas : 1
+				}, { parentCtx: ctx });
 			}
 		},
 		stopDeployment: {
@@ -267,12 +261,27 @@ module.exports = {
 			async handler(ctx) {
 				const { name, namespace, cluster } = Object.assign({}, ctx.params);
 
+				return this.actions.scaleDeployment({
+					name, namespace, cluster, replicas: 0
+				}, { parentCtx: ctx })
+
+			}
+		},
+		scaleDeployment: {
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+				replicas: { type: "number", optional: true, default: 0 },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster, replicas } = Object.assign({}, ctx.params);
+
 				let deployment = await this.actions.readNamespacedDeployment({
 					name, namespace, cluster
 				}, { parentCtx: ctx })
-				const replicas = deployment.spec.replicas;
 
-				deployment.spec.replicas = 0;
+				deployment.spec.replicas = replicas;
 
 				return this.actions.replaceNamespacedDeployment({
 					name, namespace, cluster, body: deployment
