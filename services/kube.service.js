@@ -246,7 +246,7 @@ module.exports = {
 					deployment.spec.template.metadata.annotations = {}
 				}
 
-				deployment.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = Date()
+				deployment.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = Date().toString()
 
 				return this.actions.replaceNamespacedDeployment({
 					name, namespace, cluster, body: deployment
