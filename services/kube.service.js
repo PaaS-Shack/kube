@@ -226,6 +226,30 @@ module.exports = {
 
 			}
 		},
+		restartDeployment: {
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster } = Object.assign({}, ctx.params);
+
+				return this.actions.patchNamespacedDeployment({
+					name, namespace, cluster, body: {
+						"spec": {
+							"template": {
+								"metadata": {
+									"annotations": {
+										"kubectl.kubernetes.io/restartedAt": Date.now()
+									}
+								}
+							}
+						}
+					}
+				}, { parentCtx: ctx })
+			}
+		},
 		loadConfig: {
 			params: {
 				name: { type: "string", optional: false },
