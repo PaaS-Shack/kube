@@ -235,18 +235,18 @@ module.exports = {
 			async handler(ctx) {
 				const { name, namespace, cluster } = Object.assign({}, ctx.params);
 
-				const deployment = await this.actions.findOne({
-					metadata: {
-						name,
-						namespace
-					}
-				})
+				let deployment = await this.actions.readNamespacedDeployment({
+					name, namespace, cluster
+				}, { parentCtx: ctx })
+				const replicas = deployment.spec.replicas;
 
-				if (!deployment.spec.template.metadata.annotations) {
-					deployment.spec.template.metadata.annotations = {}
-				}
+				deployment.spec.replicas = 0;
+				
+				deployment = await this.actions.replaceNamespacedDeployment({
+					name, namespace, cluster, body: deployment
+				}, { parentCtx: ctx })
 
-				deployment.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = Date().toString()
+				deployment.spec.replicas = replicas > 0 ? replicas : 1;
 
 				return this.actions.replaceNamespacedDeployment({
 					name, namespace, cluster, body: deployment
@@ -278,7 +278,7 @@ module.exports = {
 				}
 				this.configs.set(name, config)
 
-				const list = [...core, ...apps, ...batch, ...tekton]
+				const list = [...core, ...apps, ...batch]
 
 				for (let index = 0; index < list.length; index++) {
 					this.watchAPI(config, list[index], ['ADDED', 'MODIFIED', 'DELETED'])
@@ -556,7 +556,7 @@ module.exports = {
 				}
 			}, (err) => {
 				if (err) {
-					console.log(err)
+					//console.log(err)
 				}
 				delete this.kubeEvents[`${cluster}-${api}`];
 				setTimeout(() => {
