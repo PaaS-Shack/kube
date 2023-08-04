@@ -242,6 +242,10 @@ module.exports = {
 					}
 				})
 
+				if (!deployment.spec.template.metadata.annotations) {
+					deployment.spec.template.metadata.annotations = {}
+				}
+
 				deployment.spec.template.metadata.annotations['kubectl.kubernetes.io/restartedAt'] = Date()
 
 				return this.actions.replaceNamespacedDeployment({
