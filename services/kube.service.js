@@ -237,9 +237,15 @@ module.exports = {
 
 				return this.actions.patchNamespacedDeployment({
 					name, namespace, cluster, body: {
-						"metadata": {
-							"annotations": {
-								"kubectl.kubernetes.io/restartedAt": Date.now()
+						"apiVersion": "apps/v1",
+						"kind": "Deployment",
+						"spec": {
+							"template": {
+								"metadata": {
+									"annotations": {
+										"kubectl.kubernetes.io/restartedAt": Date().toString()
+									}
+								}
 							}
 						}
 					}
