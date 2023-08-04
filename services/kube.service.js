@@ -720,6 +720,10 @@ function generateAPI(name) {
 					}
 				}
 
+				if (type == 'patch') {
+					properties.push({ headers: { 'content-type': 'application/json-patch+json' } })
+				}
+
 				const config = this.configs.get(params.cluster);
 				if (!config) {
 					throw (`Config '${params.config}' not found`)
