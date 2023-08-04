@@ -241,11 +241,17 @@ module.exports = {
 				const replicas = deployment.spec.replicas;
 
 				deployment.spec.replicas = 0;
-				
-				deployment = await this.actions.replaceNamespacedDeployment({
+
+				await this.actions.replaceNamespacedDeployment({
 					name, namespace, cluster, body: deployment
 				}, { parentCtx: ctx })
 
+				await this.sleep()
+				
+				deployment = await this.actions.readNamespacedDeployment({
+					name, namespace, cluster
+				}, { parentCtx: ctx })
+				
 				deployment.spec.replicas = replicas > 0 ? replicas : 1;
 
 				return this.actions.replaceNamespacedDeployment({
@@ -469,6 +475,8 @@ module.exports = {
 	 * Methods
 	 */
 	methods: {
+		sleep(time = 1000) { return new Promise((resolve) => setTimeout(resolve, time)) },
+
 		stopWatch() {
 			if (this.kubeEvents) {
 				Object.keys(this.kubeEvents).forEach((key) => {
