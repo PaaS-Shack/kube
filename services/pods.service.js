@@ -21,7 +21,7 @@ class Container {
 		this.finishedAt = null;
 		this.updatedAt = Date.now();
 
-		
+
 		this.reason = null;
 		this.message = null;
 		this.exitCode = -1
@@ -351,6 +351,7 @@ module.exports = {
 	 * Service started lifecycle event handler
 	 */
 	started() {
+		
 		return this.broker.call('v1.kube.find', {
 			kind: 'Pod'
 		}).then((res) => {

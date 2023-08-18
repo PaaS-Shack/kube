@@ -153,18 +153,42 @@ module.exports = {
 				return this.actions.readNamespacedSecret({
 					name, namespace, cluster
 				}, { parentCtx: ctx })
-					.then(() => {
-						return this.actions.replaceNamespacedSecret({
+					.then(() =>
+						this.actions.replaceNamespacedSecret({
 							name, namespace, cluster, body: secret
 						}, { parentCtx: ctx })
-					}).catch(() => {
-						return this.actions.createNamespacedSecret({
+					).catch(() =>
+						this.actions.createNamespacedSecret({
 							name, namespace, cluster, body: secret
 						}, { parentCtx: ctx })
-					})
+					)
+			}
+		},
+		nodes: {
+			rest: 'GET /nodes',
+			params: {
+
+			},
+			async handler(ctx) {
+				return ctx.call('v1.kube.find', {
+					kind: 'Node'
+				})
+			}
+		},
+		node: {
+			rest: 'GET /nodes/:name',
+			params: {
+				name: { type: "string", default: 'default', optional: true },
+			},
+			async handler(ctx) {
+				return ctx.call('v1.kube.findOne', {
+					kind: 'Node',
+					metadata: { name: ctx.params.name }
+				})
 			}
 		},
 		topNodes: {
+			rest: 'GET /top/nodes',
 			params: {
 				cluster: { type: "string", default: 'default', optional: true },
 			},
@@ -174,6 +198,7 @@ module.exports = {
 			}
 		},
 		topPods: {
+			rest: 'GET /top/nodes',
 			params: {
 				cluster: { type: "string", default: 'default', optional: true },
 				namespace: { type: "string", optional: true },
@@ -238,7 +263,7 @@ module.exports = {
 				let deployment = await this.actions.readNamespacedDeployment({
 					name, namespace, cluster
 				}, { parentCtx: ctx });
-				
+
 				const replicas = deployment.spec.replicas;
 
 				await this.actions.scaleDeployment({
@@ -287,6 +312,84 @@ module.exports = {
 					name, namespace, cluster, body: deployment
 				}, { parentCtx: ctx })
 
+			}
+		},
+		loadServiceToRoute: {
+			rest: 'POST /load/service-to-route',
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+				fqdn: { type: "string", optional: false },
+				router: { type: "string", optional: false },
+				port: { type: "number", default: 0, optional: true },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster, fqdn, router, port } = Object.assign({}, ctx.params);
+
+				const serviceDomain = await ctx.call('v1.domains.resolveDomain', {
+					domain: fqdn
+				})
+				const options = { meta: { userID: serviceDomain.owner } }
+
+				const record = await ctx.call('v1.domains.records.resolveRecord', {
+					fqdn: fqdn,
+					type: 'A',
+					data: router,
+					domain: serviceDomain.id
+				}, options)
+					.then((res) => res ? res : ctx.call('v1.domains.records.create', {
+						fqdn: fqdn,
+						type: 'A',
+						data: router,
+						domain: serviceDomain.id
+					}, options))
+
+				const ca = await ctx.call('v1.certificates.find', {
+					query: {
+						domain: fqdn
+					}
+				}).then((res) => res.shift())
+
+
+				if (!ca) {
+					await ctx.call('v1.certificates.letsencrypt.dns', {
+						domain: fqdn
+					})
+				}
+
+				const svc = await ctx.call('v1.kube.findOne', {
+					metadata: {
+						name,
+						namespace
+					},
+					cluster,
+					kind: 'Service'
+				})
+
+				const route = await ctx.call('v1.routes.resolveRoute', {
+					vHost: fqdn
+				}, options)
+					.then((res) => res ? res : ctx.call('v1.routes.create', {
+						vHost: fqdn
+					}, options))
+
+
+				const hostConfig = {
+					route: route.id,
+					hostname: svc.spec.clusterIP,
+					port: port == 0 ?
+						svc.spec.ports[0].port :
+						svc.spec.ports.find((item) => port == item.port)
+				}
+
+				const host = await ctx.call('v1.routes.hosts.resolveHost', hostConfig, options)
+					.then((res) => res ? res : ctx.call('v1.routes.hosts.create', hostConfig, options))
+
+				return {
+					serviceDomain,
+					options, record, ca, route, host
+				}
 			}
 		},
 		loadConfig: {
@@ -764,6 +867,12 @@ function generateAPI(name) {
 					throw (`Config '${params.config}' not found`)
 				}
 
+				if (type == 'patch') {
+					const options = { headers: { 'Content-type': 'application/merge-patch+json' } };
+					properties.pop()
+					properties.push(options)
+				}
+				console.log(properties)
 				return config.api[name][`${key}`](...properties)
 					.then((res) => {
 						return res.body
