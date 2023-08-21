@@ -228,6 +228,31 @@ module.exports = {
 				return writeStream;
 			}
 		},
+
+		podEvict: {
+			rest: "DELETE /pods/:namespace/:name/evict",
+			description: "Add members to the addon",
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster } = Object.assign({}, ctx.params);
+
+				return this.actions.createNamespacedPodEviction({
+					name, namespace, cluster,
+					body:{
+						"apiVersion": "policy/v1",
+						"kind": "Eviction",
+						"metadata": {
+							name,
+							namespace
+						}
+					}
+				});
+			}
+		},
 		logs: {
 			params: {
 				name: { type: "string", optional: false },
