@@ -207,7 +207,7 @@ module.exports = {
 			},
 			async handler(ctx) {
 				const config = this.configs.get(ctx.params.cluster)
-				return config.metrics.getPodMetrics(ctx.params.namespace, ctx.params.name).then((res) => res.items[0])
+				return config.metrics.getPodMetrics(ctx.params.namespace, ctx.params.name)//.then((res) => res.items[0])
 
 			}
 		},
