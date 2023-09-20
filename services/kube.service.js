@@ -228,10 +228,35 @@ module.exports = {
 				return writeStream;
 			}
 		},
+		attach: {
+			async handler(ctx) {
+				const config = this.configs.get(ctx.meta.cluster)
+				const attach = new k8s.Attach(config.kc);
+				const readStream = ctx.params;
+				const writeStream = new stream.PassThrough();
+
+				attach.attach(
+					ctx.meta.namespace,
+					ctx.meta.pod,
+					ctx.meta.container,
+					writeStream,
+					writeStream,
+					readStream,
+					true /* tty */,
+					(status) => {
+						console.log('Exited with status:');
+						console.log(JSON.stringify(status, null, 2));
+					}
+				);
+
+
+				return writeStream;
+			}
+		},
 
 		podEvict: {
 			rest: "DELETE /pods/:namespace/:name/evict",
-			description: "Add members to the addon",
+			description: "Evict a pod",
 			params: {
 				name: { type: "string", optional: false },
 				namespace: { type: "string", optional: false },
@@ -242,7 +267,7 @@ module.exports = {
 
 				return this.actions.createNamespacedPodEviction({
 					name, namespace, cluster,
-					body:{
+					body: {
 						"apiVersion": "policy/v1",
 						"kind": "Eviction",
 						"metadata": {
@@ -258,10 +283,20 @@ module.exports = {
 				name: { type: "string", optional: false },
 				namespace: { type: "string", optional: false },
 				cluster: { type: "string", default: 'default', optional: true },
+				follow: { type: "boolean", default: false, optional: true },
+				tailLines: { type: "number", default: 50, optional: true },
+				pretty: { type: "boolean", default: false, optional: true },
+				timestamps: { type: "boolean", default: false, optional: true },
 			},
 			async handler(ctx) {
 				const { name, namespace, cluster } = Object.assign({}, ctx.params);
-				const config = this.configs.get(cluster)
+				const config = this.configs.get(cluster);
+				const options = {
+					follow: this.params.follow,
+					tailLines: this.params.tailLines,
+					pretty: this.params.pretty,
+					timestamps: this.params.timestamps,
+				};
 
 				const logStream = new stream.PassThrough();
 
@@ -271,9 +306,15 @@ module.exports = {
 					chunk.push(c.toString());
 				});
 
-				await config.logger.log(namespace, name, undefined, logStream, { follow: false, tailLines: 50, pretty: false, timestamps: false })
-				return new Promise((resolve) => logStream.on('end', () => resolve(chunk)))
+				await config.logger.log(namespace, name, undefined, logStream, options);
 
+				// check if we follow the stream
+				if (options.follow) {
+					// return stream
+					return logStream;
+				}
+
+				return new Promise((resolve) => logStream.on('end', () => resolve(chunk)));
 			}
 		},
 		restartDeployment: {
