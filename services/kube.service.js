@@ -292,10 +292,10 @@ module.exports = {
 				const { name, namespace, cluster } = Object.assign({}, ctx.params);
 				const config = this.configs.get(cluster);
 				const options = {
-					follow: params.follow,
-					tailLines: params.tailLines,
-					pretty: params.pretty,
-					timestamps: params.timestamps,
+					follow: ctx.params.follow,
+					tailLines: ctx.params.tailLines,
+					pretty: ctx.params.pretty,
+					timestamps: ctx.params.timestamps,
 				};
 
 				const logStream = new stream.PassThrough();
