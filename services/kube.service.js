@@ -690,20 +690,12 @@ module.exports = {
 			}
 			this.kubeEvents = {}
 
-			if (process.env.CONFIGS) {
-				const configs = JSON.parse(process.env.CONFIGS);
-				this.logger.info(`Loading configs`, configs)
-				setTimeout(async () => {
-					if (this.closed) return;
-					for (let index = 0; index < configs.length; index++) {
-						const config = configs[index];
-						await this.actions.loadConfig({
-							path: config.path,
-							name: config.name
-						})
-					}
-				}, 1000)
-			}
+			return this.actions.loadConfig({
+				path: '/config/adminConf',
+				name: 'default'
+			}).catch((err) => {
+				this.logger.error(`Error loading default config`, err);
+			});
 		},
 		async watchAPI(config, api, events = ['ADDED', 'MODIFIED', 'DELETED']) {
 			if (this.closed) return;
@@ -813,13 +805,13 @@ module.exports = {
 		this.cache = new Map()
 		this.configs = new Map()
 		this.db = new Datastore();
+		this.closed = false;
 	},
 
 	/**
 	 * Service started lifecycle event handler
 	 */
 	async started() {
-		this.closed = false
 		this.startWatch()
 	},
 
