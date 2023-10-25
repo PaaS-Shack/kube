@@ -218,7 +218,14 @@ module.exports = {
 				namespace: { type: "string", optional: false },
 				name: { type: "string", optional: false },
 				container: { type: "string", optional: true },
-				command: { type: "array", items: "string", optional: false },
+				command: {
+					type: "array",
+					items: {
+						type: "string",
+						convert: true
+					},
+					optional: false
+				},
 			},
 			async handler(ctx) {
 				const params = Object.assign({}, ctx.params);
@@ -228,10 +235,10 @@ module.exports = {
 				// check if we have a container
 				if (!params.container) {
 					// get pod
-					const pod = await this.actions.readNamespacedPod({
-						name: params.name,
-						namespace: params.namespace,
-						cluster: params.cluster
+					const pod = await this.actions.findOne({
+						metadata: {
+							name: params.name,
+						}
 					}, { parentCtx: ctx })
 
 					// get the first container
@@ -244,36 +251,25 @@ module.exports = {
 				const writeStream = new stream.PassThrough();
 				const errorStream = new stream.PassThrough();
 
+
+				const readChunks = [];
+				const errorChunks = [];
+				writeStream.on('data', (c) => {
+					readChunks.push(c.toString());
+				});
+				errorStream.on('data', (c) => {
+					errorChunks.push(c.toString());
+				});
+
+				exec.exec(params.namespace, params.name, params.container, params.command, writeStream, errorStream, null, false)
+
 				return new Promise((resolve, reject) => {
-
-					const readChunks = [];
-					const errorChunks = [];
-					readStream.on('data', (c) => {
-						readChunks.push(c.toString());
+					writeStream.once('end', () => {
+						resolve({
+							stdout: readChunks.join(''),
+							stderr: errorChunks.join('')
+						})
 					});
-					errorStream.on('data', (c) => {
-						errorChunks.push(c.toString());
-					});
-
-					exec.exec(
-						params.namespace,
-						params.name,
-						params.container,
-						params.command,
-						writeStream,
-						errorStream,
-						readStream,
-						true /* tty */,
-						(status) => {
-							console.log('Exited with status:');
-							console.log(JSON.stringify(status, null, 2));
-							resolve({
-								status,
-								stdout: readChunks.join(''),
-								stderr: errorChunks.join('')
-							});
-						}
-					);
 				});
 			}
 		},
@@ -740,7 +736,7 @@ module.exports = {
 			this.kubeEvents = {}
 
 			return this.actions.loadConfig({
-				path: '/config/adminConf',
+				path: '/home/ubuntu/.kube/config',
 				name: 'default'
 			}).catch((err) => {
 				this.logger.error(`Error loading default config`, err);
