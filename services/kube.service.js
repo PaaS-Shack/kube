@@ -215,10 +215,10 @@ module.exports = {
 			rest: 'POST /exec',
 			params: {
 				cluster: { type: "string", default: 'default', optional: true },
-				namespace: { type: "string", optional: true },
-				name: { type: "string", optional: true },
+				namespace: { type: "string", optional: false },
+				name: { type: "string", optional: false },
 				container: { type: "string", optional: true },
-				command: { type: "array", items: "string", optional: true },
+				command: { type: "array", items: "string", optional: false },
 			},
 			async handler(ctx) {
 				const params = Object.assign({}, ctx.params);
