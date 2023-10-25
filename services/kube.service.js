@@ -212,20 +212,69 @@ module.exports = {
 			}
 		},
 		exec: {
+			rest: 'POST /exec',
+			params: {
+				cluster: { type: "string", default: 'default', optional: true },
+				namespace: { type: "string", optional: true },
+				name: { type: "string", optional: true },
+				container: { type: "string", optional: true },
+				command: { type: "array", items: "string", optional: true },
+			},
 			async handler(ctx) {
-				const config = this.configs.get(ctx.meta.cluster)
-				const writeStream = new stream.PassThrough();
+				const params = Object.assign({}, ctx.params);
+
+				const config = this.configs.get(params.cluster)
+
+				// check if we have a container
+				if (!params.container) {
+					// get pod
+					const pod = await this.actions.readNamespacedPod({
+						name: params.name,
+						namespace: params.namespace,
+						cluster: params.cluster
+					}, { parentCtx: ctx })
+
+					// get the first container
+					params.container = pod.spec.containers[0].name
+				}
+
 				const exec = new k8s.Exec(config.kc);
-				exec.exec(ctx.meta.namespace, ctx.meta.pod, ctx.meta.container, ctx.meta.command,
-					writeStream, writeStream, ctx.params,
-					true /* tty */, (status) => {
-						// tslint:disable-next-line:no-console
-						console.log('Exited with status:');
-						// tslint:disable-next-line:no-console
-						console.log(JSON.stringify(status, null, 2));
+
+				const readStream = new stream.PassThrough();
+				const writeStream = new stream.PassThrough();
+				const errorStream = new stream.PassThrough();
+
+				return new Promise((resolve, reject) => {
+
+					const readChunks = [];
+					const errorChunks = [];
+					readStream.on('data', (c) => {
+						readChunks.push(c.toString());
+					});
+					errorStream.on('data', (c) => {
+						errorChunks.push(c.toString());
 					});
 
-				return writeStream;
+					exec.exec(
+						params.namespace,
+						params.name,
+						params.container,
+						params.command,
+						writeStream,
+						errorStream,
+						readStream,
+						true /* tty */,
+						(status) => {
+							console.log('Exited with status:');
+							console.log(JSON.stringify(status, null, 2));
+							resolve({
+								status,
+								stdout: readChunks.join(''),
+								stderr: errorChunks.join('')
+							});
+						}
+					);
+				});
 			}
 		},
 		attach: {
