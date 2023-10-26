@@ -260,7 +260,7 @@ module.exports = {
 				errorStream.on('data', (c) => {
 					errorChunks.push(c.toString());
 				});
-console.log(params.namespace, params.name, params.container, params.command)
+				console.log(params.namespace, params.name, params.container, params.command)
 				return exec.exec(params.namespace, params.name, params.container, params.command, writeStream, errorStream, null, false)
 					.then(() => {
 						return new Promise((resolve, reject) => {
@@ -273,7 +273,7 @@ console.log(params.namespace, params.name, params.container, params.command)
 						});
 					}).catch((err) => {
 						console.log(err)
-						throw new MoleculerRetryableError(err.message, 500, 'EXEC_ERROR', {  })
+						throw new MoleculerRetryableError(err.message, 500, 'EXEC_ERROR', {})
 					})
 
 			}
@@ -741,7 +741,7 @@ console.log(params.namespace, params.name, params.container, params.command)
 			this.kubeEvents = {}
 
 			return this.actions.loadConfig({
-				path: '/home/ubuntu/.kube/config',
+				path: '/config/adminConf'
 				name: 'default'
 			}).catch((err) => {
 				this.logger.error(`Error loading default config`, err);
