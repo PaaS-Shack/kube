@@ -741,7 +741,7 @@ module.exports = {
 			this.kubeEvents = {}
 
 			return this.actions.loadConfig({
-				path: '/config/adminConf'
+				path: '/config/adminConf',
 				name: 'default'
 			}).catch((err) => {
 				this.logger.error(`Error loading default config`, err);
