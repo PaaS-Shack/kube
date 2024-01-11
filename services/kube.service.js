@@ -281,18 +281,22 @@ module.exports = {
 		attach: {
 			async handler(ctx) {
 				const config = this.configs.get(ctx.meta.cluster)
-				const attach = new k8s.Attach(config.kc);
+				const exec = new k8s.Exec(config.kc);
 				const readStream = ctx.params;
 				const writeStream = new stream.PassThrough();
 
-				return attach.attach(
+				return exec.exec(
 					ctx.meta.namespace,
 					ctx.meta.pod,
 					ctx.meta.container,
+					"bash",
 					writeStream,
 					writeStream,
 					readStream,
 					true /* tty */,
+					(status) => {
+						console.log(status)
+					}
 				).then(() => {
 					return writeStream;
 				}).catch((err) => {
