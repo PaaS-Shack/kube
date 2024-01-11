@@ -285,7 +285,7 @@ module.exports = {
 				const readStream = ctx.params;
 				const writeStream = new stream.PassThrough();
 
-				await attach.attach(
+				return attach.attach(
 					ctx.meta.namespace,
 					ctx.meta.pod,
 					ctx.meta.container,
@@ -293,10 +293,12 @@ module.exports = {
 					writeStream,
 					readStream,
 					true /* tty */,
-				);
-
-
-				return Promise.resolve(writeStream);
+				).then(() => {
+					return writeStream;
+				}).catch((err) => {
+					console.log(err)
+					throw new MoleculerRetryableError(err.message, 500, 'EXEC_ERROR', {})
+				});
 			}
 		},
 
