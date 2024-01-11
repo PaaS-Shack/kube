@@ -285,7 +285,7 @@ module.exports = {
 				const readStream = ctx.params;
 				const writeStream = new stream.PassThrough();
 
-				attach.attach(
+				await attach.attach(
 					ctx.meta.namespace,
 					ctx.meta.pod,
 					ctx.meta.container,
