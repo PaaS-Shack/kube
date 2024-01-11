@@ -289,7 +289,7 @@ module.exports = {
 					ctx.meta.namespace,
 					ctx.meta.pod,
 					ctx.meta.container,
-					"bash",
+					ctx.meta.command || "/bin/bash",
 					writeStream,
 					writeStream,
 					readStream,
