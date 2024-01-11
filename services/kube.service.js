@@ -293,14 +293,10 @@ module.exports = {
 					writeStream,
 					readStream,
 					true /* tty */,
-					(status) => {
-						console.log('Exited with status:');
-						console.log(JSON.stringify(status, null, 2));
-					}
 				);
 
 
-				return writeStream;
+				return Promise.resolve(writeStream);
 			}
 		},
 
