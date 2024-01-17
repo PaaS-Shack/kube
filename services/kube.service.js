@@ -498,7 +498,7 @@ module.exports = {
 					hostname: svc.spec.clusterIP,
 					port: port == 0 ?
 						svc.spec.ports[0].port :
-						svc.spec.ports.find((item) => port == item.port)
+						svc.spec.ports.find((item) => port == item.port).port
 				}
 
 				const host = await ctx.call('v1.routes.hosts.create', hostConfig, options);
