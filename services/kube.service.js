@@ -463,7 +463,7 @@ module.exports = {
 						domain: serviceDomain.id
 					}, options))
 
-				const ca = await ctx.call('v1.certificates.find', {
+				let ca = await ctx.call('v1.certificates.find', {
 					query: {
 						domain: fqdn
 					}
@@ -471,7 +471,7 @@ module.exports = {
 
 
 				if (!ca) {
-					await ctx.call('v1.certificates.letsencrypt.dns', {
+					ca = await ctx.call('v1.certificates.letsencrypt.dns', {
 						domain: fqdn
 					})
 				}
@@ -501,8 +501,7 @@ module.exports = {
 						svc.spec.ports.find((item) => port == item.port)
 				}
 
-				const host = await ctx.call('v1.routes.hosts.resolveHost', hostConfig, options)
-					.then((res) => res ? res : ctx.call('v1.routes.hosts.create', hostConfig, options))
+				const host = await ctx.call('v1.routes.hosts.create', hostConfig, options);
 
 				return {
 					serviceDomain,
