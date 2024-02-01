@@ -381,17 +381,60 @@ module.exports = {
 				let deployment = await this.actions.readNamespacedDeployment({
 					name, namespace, cluster
 				}, { parentCtx: ctx });
+				
+				// patch the deployment to trigger a restart
+				deployment.spec.template.metadata.annotations = {
+					"restartedAt": new Date().toISOString()
+				};
 
-				const replicas = deployment.spec.replicas;
+				return this.actions.replaceNamespacedDeployment({
+					name, namespace, cluster, body: deployment
+				}, { parentCtx: ctx });
+			}
+		},
+		restartStatefulSet: {
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster } = Object.assign({}, ctx.params);
 
-				await this.actions.scaleDeployment({
-					name, namespace, cluster, replicas: 0
+				let statefulSet = await this.actions.readNamespacedStatefulSet({
+					name, namespace, cluster
 				}, { parentCtx: ctx });
 
-				await this.sleep();
+				// patch the statefulSet to trigger a restart
+				statefulSet.spec.template.metadata.annotations = {
+					"restartedAt": new Date().toISOString()
+				};
 
-				return this.actions.scaleDeployment({
-					name, namespace, cluster, replicas: replicas > 0 ? replicas : 1
+				return this.actions.replaceNamespacedStatefulSet({
+					name, namespace, cluster, body: statefulSet
+				}, { parentCtx: ctx });
+			}
+		},
+		restartDaemonSet: {
+			params: {
+				name: { type: "string", optional: false },
+				namespace: { type: "string", optional: false },
+				cluster: { type: "string", default: 'default', optional: true },
+			},
+			async handler(ctx) {
+				const { name, namespace, cluster } = Object.assign({}, ctx.params);
+
+				let daemonSet = await this.actions.readNamespacedDaemonSet({
+					name, namespace, cluster
+				}, { parentCtx: ctx });
+
+				// patch the daemonSet to trigger a restart
+				daemonSet.spec.template.metadata.annotations = {
+					"restartedAt": new Date().toISOString()
+				};
+
+				return this.actions.replaceNamespacedDaemonSet({
+					name, namespace, cluster, body: daemonSet
 				}, { parentCtx: ctx });
 			}
 		},
